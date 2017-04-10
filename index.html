@@ -367,15 +367,35 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f6e8c4', end
 
       document.getElementById('kuntadropdown').value=thisCircle;
 
-      window.onload=function() {
-        document.getElementById("kuntadropdown").addEventListener('change', function() {
-          document.getElementById('kuntadropdown').value=this.value;
-           thisCircle=this.value;
-           circleSelect(thisCircle);
-           updateBarplot();
+    //  window.onload=function() {
+    //    document.getElementById("kuntadropdown").addEventListener('change', function() {
+      //    document.getElementById('kuntadropdown').value=this.value;
+      //     thisCircle=this.value;
+    //       circleSelect(thisCircle);
+  //         updateBarplot();
+//
+  //      }, false);
+//  }
 
-        }, false);
-  }
+    window.onload=function() {
+      var button = document.getElementById('kuntadropdown');
+        if (button.addEventListener) {  // all browsers except IE before version 9
+            button.addEventListener ("change", function () {
+              thisCircle=this.value;
+              circleSelect(thisCircle)
+              updateBarplot();
+            }, false);
+        }
+        else {
+            if (button.attachEvent) {   // IE before version 9
+                button.attachEvent ("onchange", function () {
+                  thisCircle=this.value;
+                  circleSelect(thisCircle)
+                  updateBarplot();
+                });
+            }
+        }
+      }
 
   })
 
