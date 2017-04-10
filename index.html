@@ -368,13 +368,14 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f6e8c4', end
       document.getElementById('kuntadropdown').value=thisCircle;
 
       window.onload=function() {
-        document.getElementById("kuntadropdown").onchange=function() {
+        document.getElementById("kuntadropdown").addEventListener('change', function() {
           document.getElementById('kuntadropdown').value=this.value;
            thisCircle=this.value;
            circleSelect(thisCircle);
            updateBarplot();
+
+        }, false);
   }
-}
 
   })
 
