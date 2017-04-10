@@ -282,7 +282,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f6e8c4', end
         .enter().append("text")
         .filter(function(d) { return d.alue == thisCircle; })
         .attr("x", 45)
-        .attr("y", function(d,i) { return (i*17) + 48); }
+        .attr("y", function(d,i) { return ((i*17) + 48); })
         .style("text-anchor", "end")
         .text(function(d) { return d.puolue;})
 
