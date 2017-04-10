@@ -112,7 +112,6 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f6e8c4', end
   d3.csv("data/kuntalista2017.csv", function(error, lista) {
     if (error) throw error
     kuntalista = lista;
-    console.log(lista)
   })
 
 //Lataa data
@@ -124,7 +123,6 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f6e8c4', end
         d.value = Math.round(+d.value);
     })
     pctList = pct;
-    console.log(pctList)
   });
 
 
@@ -148,9 +146,6 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f6e8c4', end
 
       }
     })
-
-    console.log(diffData)
-
 
 //Circular axis
   var arc = d3.arc()
@@ -380,7 +375,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f6e8c4', end
     window.onload=function() {
       var button = document.getElementById('kuntadropdown');
         if (button.addEventListener) {  // all browsers except IE before version 9
-            button.addEventListener ("change", function () {
+            button.addEventListener ("click", function () {
               thisCircle=this.value;
               circleSelect(thisCircle)
               updateBarplot();
