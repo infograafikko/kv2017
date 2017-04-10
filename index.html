@@ -372,10 +372,10 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f6e8c4', end
   //      }, false);
 //  }
 
-    window.onload=function() {
+    function changeSel() {
       var button = document.getElementById('kuntadropdown');
         if (button.addEventListener) {  // all browsers except IE before version 9
-            button.addEventListener ("click", function () {
+            button.addEventListener ("change", function () {
               thisCircle=this.value;
               circleSelect(thisCircle)
               updateBarplot();
@@ -392,7 +392,11 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f6e8c4', end
         }
       }
 
+    setTimeout(function() { changeSel()}, 5);
+
   })
+
+
 
   </script>
   <p></p>
