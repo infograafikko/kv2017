@@ -1,0 +1,681 @@
+<head>
+  <link href="https://fonts.googleapis.com/css?family=Merriweather+Sans" rel="stylesheet">
+  <meta charset="utf-8">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.4.0/d3.min.js"></script>
+</head>
+<style>
+
+body {
+  font-family: 'Merriweather Sans', sans-serif;
+
+  background: rgba(242, 199, 84, 0.38); /* Old browsers */
+background: -moz-radial-gradient(center, ellipse cover,  rgba(242, 199, 84, 0.38) 0%, rgba(242, 199, 84, 1) 100%); /* FF3.6+ */
+background: -webkit-gradient(radial, center center, 0px, center center, 100%, color-stop(0%,rgba(242, 199, 84, 0.38)), color-stop(100%,rgba(242, 199, 84, 1))); /* Chrome,Safari4+ */
+background: -webkit-radial-gradient(center, ellipse cover,  rgba(242, 199, 84, 0.38) 0%,rgba(242, 199, 84, 1) 100%); /* Chrome10+,Safari5.1+ */
+background: -o-radial-gradient(center, ellipse cover,  rgba(242, 199, 84, 0.38) 0%,rgba(242, 199, 84, 1) 100%); /* Opera 12+ */
+background: -ms-radial-gradient(center, ellipse cover,  rgba(242, 199, 84, 0.38) 0%,rgba(242, 199, 84, 1) 100%); /* IE10+ */
+background: radial-gradient(ellipse at center,  rgba(242, 199, 84, 0.38) 0%,rgba(242, 199, 84, 1) 100%); /* W3C */
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f6e8c4', endColorstr='#f2c754',GradientType=1 ); /* IE6-9 fallback on horizontal gradient */
+
+}
+
+.citycircles {
+  opacity: 0.8;
+}
+
+
+.tooltip {
+  position: absolute;
+  text-align: center;
+  width: 90px;
+  height: 12px;
+  padding: 8px;
+  margin-top: -20px;
+  font: 10px sans-serif;
+  background: white;
+  pointer-events: none;
+}
+
+#idea {
+  color: gray;
+  font-size: 10px;
+}
+
+#idea a {
+  color: #e65d48;
+  font-size: 10px;
+}
+
+#maker {
+  color: black;
+  font-size: 13px;
+}
+
+#maker a {
+  color: #e65d48;
+  font-size: 13px;
+}
+
+</style>
+<body>
+<h1 id="otsikko">Kunnallisvaalit 2012 - tulokset puolueittain</h1>
+<p id="maker">Toteutus: <a href="https://www.infograafikko.fi/?utm_source=kuntavaalit">Infograafikko.fi, Joel Kanerva</a></p>
+  <script type="text/javascript">
+
+  var kuntalista;
+  var pctList;
+  var globalData;
+  var tooltipParent;
+  var thisCircle = "Padasjoki";
+  var thisParty = "vihr";
+
+  //Epic axes data
+  var axes = [
+  { 'label': 'Samanlainen', 'value': 25 },
+  { 'label': 'Jokseenkin samanlainen', 'value': 50 },
+  { 'label': 'Erilainen', 'value': 100 },
+  { 'label': 'Erittäin erilainen', 'value': 150 },
+  { 'label': 'Äärimmäisen erilainen', 'value': 200}
+  ];
+
+  //D3js setup
+  // set the dimensions and margins of the graph
+  var margin = {top: 20, right: 20, bottom: 20, left: 20},
+      width = 900 - margin.left - margin.right,
+      height = 900 - margin.top - margin.bottom;
+
+  //Axis setup
+
+  // set the ranges
+  var x = d3.scaleLinear().range([0, width / 2 - 60]).domain([0,200]);
+  var y = d3.scaleLog().range([0, width / 2 - 60]).domain([0,200]);
+
+  var rRange = d3.scaleLinear().range([2,20])
+  var colRange = d3.scaleLinear().range(["#3F222F","#F68473"])
+
+
+  var svg = d3.select("body").append("svg")
+      .attr("width", width)
+      .attr("height", height )
+
+  var g = svg.append("g")
+          .attr("transform",
+            "translate(" + width/2 + "," + height/2 + ")");
+
+  //Tooltip setup
+  var tooltip = d3.select("body").append("div")
+      .attr("class", "tooltip")
+      .style("display", "none");
+
+
+//Lista Helsingin kaupunginosista
+  d3.csv("data/kuntalista2017.csv", function(error, lista) {
+    if (error) throw error
+    kuntalista = lista;
+    console.log(lista)
+  })
+
+//Lataa data
+    d3.tsv("data/puoluepct2017.tsv", function(error, pct) {
+      if (error) throw error
+
+//Muunna data numeroiksi labelia varten
+      pct.forEach(function(d) {
+        d.value = Math.round(+d.value);
+    })
+    pctList = pct;
+    console.log(pctList)
+  });
+
+
+//Lataa data radial chartiin
+  d3.tsv("data/kv2017.tsv", function(error, diffData) {
+    if (error) throw error
+
+//Muunna data numeroiksi
+    diffData.forEach(function(d) {
+      for (i = 0; i < kuntalista.length; i++) {
+        d[kuntalista[i].x] = +d[kuntalista[i].x];
+        d.kok = +d.kok;
+        d.sdp = +d.sdp;
+        d.kesk = +d.kesk;
+        d.ps = +d.ps;
+        d.vihr = +d.vihr;
+        d.vas = +d.vas;
+        d.rkp = +d.rkp;
+        d.kd = +d.kd;
+        d.muut = +d.muut;
+
+      }
+    })
+
+    console.log(diffData)
+
+
+//Circular axis
+  var arc = d3.arc()
+    .outerRadius(function(d) { return x(d.value); })
+    .startAngle(0)
+    .endAngle(2 * Math.PI)
+
+  var ga = g.append("g")
+    .attr("class", "axisgroup");
+
+  //Axis path
+  ga.selectAll(".axispath")
+    .data(axes)
+    .enter().append("path")
+	  .attr("id", function(d, i) { return "axispath" + i; })
+    .attr("class", "axispath")
+    .attr("d", arc)
+    .style("stroke", "black")
+    .style("fill", "none")
+    .style("opacity", 0.6);
+
+  //Axis text
+  ga.selectAll(".axislabel")
+    .data(axes)
+    .enter().append("text")
+    .attr("class","axislabel")
+    .attr("dy",-5)
+    .attr("dx",0)
+    .style("fill","#1a1a1a")
+    .style("font-size", "11px")
+    .style("text-anchor", "middle")
+    .append("textPath")
+    .attr("xlink:href", function(d,i) { return "#axispath" + i; })
+    .attr("startOffset", "89%")
+    .text(function(d,i) { return d.label; })
+
+    //Append circles
+
+    rRange.domain([0, d3.max(diffData, function(d) { return d[thisParty]; })])
+    colRange.domain([0,d3.max(diffData, function(d) { return d[thisParty]; })])
+
+    var updateCircles = g.selectAll(".city")
+          .data(diffData)
+
+    var enterCircles = updateCircles
+      .enter().append("circle")
+      .attr('class', 'citycircles')
+      .attr("cx", function(d, i) {return x(d[thisCircle]); })
+      .attr("cy", 0)
+      .attr("r", function(d) { return rRange(d[thisParty])})
+      .attr("fill", function(d) { return colRange(d[thisParty])})
+      .attr("transform", function(d,i) { return "rotate(" +  i / diffData.length * 360 + " 0 0)"; })
+      .on("click", function(d) {
+        circleSelect(d.alue);
+        updateBarplot();
+        })
+      .on("mouseover", function(d) {
+        tooltip.style("display", "inline");
+        thisCircle = d.alue;
+        compareBarplot();
+        })
+      .on("mousemove" ,function(d) {
+        tooltip.text(d.alue)
+          .style("left", (d3.event.pageX - 50) + "px")
+          .style("top", (d3.event.pageY - 12) + "px");
+      })
+      .on("mouseout", function() {
+        tooltip.style("display", "none")
+        updateCompare.merge(enterCompare).remove()
+        })
+
+    function circleSelect(thisCircle) {
+      g.selectAll(".citycircles")
+        .data(diffData)
+        .transition()
+        .duration(1000)
+        .attr("cx", function(d,i) { return x(d[thisCircle])} );
+
+      //Select right item from dropdown
+      document.getElementById('kuntadropdown').value=thisCircle;
+    }
+
+    //
+    //Bar chart setup
+    //
+
+    var barplot = svg.append("g")
+      .attr("transform", "translate(10,10)")
+
+    var barscale = d3.scaleLinear().domain([0,100]).range([0, 200]);
+
+    var updateBar = barplot.selectAll(".popularity")
+      .data(pctList.filter(function(d) { return d.alue == thisCircle; }))
+
+    var enterBar = updateBar.enter()
+      .append("rect")
+      .attr("x", 50)
+      .attr("y", function(d,i) { return (i*17) + 35; })
+      .attr("height", 15)
+      .attr("width", function(d) { return barscale(d.value);})
+      .attr("class", "bars")
+      .style("opacity", 0.20)
+      .on("mouseover", function(d) {
+        d3.select(this).transition().duration(300).style("opacity", 0.6)
+      })
+      .on("mouseout", function(d) {
+
+        //show filter as solid black
+        if (thisParty !=  d.puolue) {
+        d3.select(this).transition().duration(300).style("opacity", 0.2)
+      }
+      })
+      .on("click", function(d) {
+        d3.selectAll(".bars").transition().duration(300).style("opacity", 0.2)
+        d3.select(this).transition().duration(300).style("opacity", 0.6)
+          thisParty = d.puolue;
+          compareCircles(d.puolue);
+      });
+
+      //merge selected filter as solid black
+      updateBar
+        .merge(enterBar)
+        .filter(function(d) { return d.puolue == thisParty; })
+        .style("opacity", function(d) { return 0.6;})
+
+      //Append bar text for axis
+      barplot.selectAll(".popularity")
+        .data(pctList)
+        .enter().append("text")
+        .filter(function(d) { return d.alue == thisCircle; })
+        .attr("x", 45)
+        .attr("y", function(d,i) (i*17) + 48)
+        .style("text-anchor", "end")
+        .text(function(d) { return d.puolue;})
+
+      //Append bar text for values
+//      var enterTextValue = updateBar.enter()
+//        .append("text")
+//        .attr("x", function(d) { return barscale(d.value) + 54})
+//        .attr("y", function(d,i) (i*17) + 45)
+//        .text(function(d) { return d.value + " %";})
+//        .style("font-size", "9px")
+
+      var enterCityText = updateBar.enter()
+        .append("text")
+        .attr("x", 20)
+        .attr("y", 20)
+        .text(function(d,i) { if(i==0) { return d.alue;}})
+        .style("font-size", "20px")
+        .style("font-weight", "bold")
+
+    //update bar chart
+
+    function updateBarplot() {
+
+      //updateBarplot
+        updateBar
+          .merge(enterBar)
+          .data(pctList.filter(function(d) { return d.alue == thisCircle; }))
+          .transition()
+          .duration(500)
+          .attr("width", function(d) { return barscale(d.value)})
+
+      //updateValueText
+    //    updateBar
+    //      .merge(enterTextValue)
+    //      .data(pctList.filter(function(d) { return d.alue == thisCircle; }))
+    //      .transition()
+    //      .duration(500)
+    //      .attr("x", function(d) { return barscale(d.value) + 54; })
+    //      .text(function(d) { return d.value + " %";})
+
+      //updateCityText
+        updateBar
+          .merge(enterCityText)
+          .data(pctList.filter(function(d) { return d.alue == thisCircle; }))
+          .transition()
+          .duration(500)
+          .text(function(d,i) { if(i==0) { return d.alue;}})
+
+      }
+
+      var updateCompare;
+      var enterCompare;
+
+      function compareBarplot() {
+        updateCompare = barplot.selectAll(".compareBarplot")
+          .data(pctList.filter(function(d) { return d.alue == thisCircle; }))
+
+        enterCompare = updateCompare.enter()
+            .append("rect")
+            .attr("x", function(d) { return barscale(d.value) + 47; })
+            .attr("y", function(d,i) { return (i*17) + 35; })
+            .attr("height", 15)
+            .attr("width", 3)
+            .style("opacity", "0.3")
+      }
+
+      function compareCircles(filter) {
+
+        rRange.domain([0, d3.max(diffData, function(d) { return d[thisParty]; })])
+        colRange.domain([0,d3.max(diffData, function(d) { return d[thisParty]; })])
+
+        updateCircles
+          .merge(enterCircles)
+          .data(diffData)
+          .transition()
+          .duration(500)
+          .attr("r", function(d) { return rRange(d[filter])})
+          .attr("fill", function(d) { return colRange(d[filter])})
+
+      }
+
+
+      document.getElementById('kuntadropdown').value=thisCircle;
+
+      window.onload=function() {
+        document.getElementById("kuntadropdown").onchange=function() {
+          document.getElementById('kuntadropdown').value=this.value;
+           thisCircle=this.value;
+           circleSelect(thisCircle);
+           updateBarplot();
+  }
+}
+
+  })
+
+  </script>
+  <p></p>
+<select id="kuntadropdown">
+  <option value='Alajärvi' >Alajärvi</option>
+  <option value='Alavieska' >Alavieska</option>
+  <option value='Alavus' >Alavus</option>
+  <option value='Asikkala' >Asikkala</option>
+  <option value='Askola' >Askola</option>
+  <option value='Aura' >Aura</option>
+  <option value='Akaa' >Akaa</option>
+  <option value='Enonkoski' >Enonkoski</option>
+  <option value='Enontekiö' >Enontekiö</option>
+  <option value='Espoo' >Espoo</option>
+  <option value='Eura' >Eura</option>
+  <option value='Eurajoki' >Eurajoki</option>
+  <option value='Evijärvi' >Evijärvi</option>
+  <option value='Forssa' >Forssa</option>
+  <option value='Haapajärvi' >Haapajärvi</option>
+  <option value='Haapavesi' >Haapavesi</option>
+  <option value='Hailuoto' >Hailuoto</option>
+  <option value='Halsua' >Halsua</option>
+  <option value='Hamina' >Hamina</option>
+  <option value='Hankasalmi' >Hankasalmi</option>
+  <option value='Hanko' >Hanko</option>
+  <option value='Harjavalta' >Harjavalta</option>
+  <option value='Hartola' >Hartola</option>
+  <option value='Hattula' >Hattula</option>
+  <option value='Hausjärvi' >Hausjärvi</option>
+  <option value='Heinävesi' >Heinävesi</option>
+  <option value='Helsinki' >Helsinki</option>
+  <option value='Vantaa' >Vantaa</option>
+  <option value='Hirvensalmi' >Hirvensalmi</option>
+  <option value='Hollola' >Hollola</option>
+  <option value='Honkajoki' >Honkajoki</option>
+  <option value='Huittinen' >Huittinen</option>
+  <option value='Humppila' >Humppila</option>
+  <option value='Hyrynsalmi' >Hyrynsalmi</option>
+  <option value='Hyvinkää' >Hyvinkää</option>
+  <option value='Hämeenkyrö' >Hämeenkyrö</option>
+  <option value='Hämeenlinna' >Hämeenlinna</option>
+  <option value='Heinola' >Heinola</option>
+  <option value='Ii' >Ii</option>
+  <option value='Iisalmi' >Iisalmi</option>
+  <option value='Iitti' >Iitti</option>
+  <option value='Ikaalinen' >Ikaalinen</option>
+  <option value='Ilmajoki' >Ilmajoki</option>
+  <option value='Ilomantsi' >Ilomantsi</option>
+  <option value='Inari' >Inari</option>
+  <option value='Inkoo' >Inkoo</option>
+  <option value='Isojoki' >Isojoki</option>
+  <option value='Isokyrö' >Isokyrö</option>
+  <option value='Imatra' >Imatra</option>
+  <option value='Janakkala' >Janakkala</option>
+  <option value='Joensuu' >Joensuu</option>
+  <option value='Jokioinen' >Jokioinen</option>
+  <option value='Joroinen' >Joroinen</option>
+  <option value='Joutsa' >Joutsa</option>
+  <option value='Juuka' >Juuka</option>
+  <option value='Juupajoki' >Juupajoki</option>
+  <option value='Juva' >Juva</option>
+  <option value='Jyväskylä' >Jyväskylä</option>
+  <option value='Jämijärvi' >Jämijärvi</option>
+  <option value='Jämsä' >Jämsä</option>
+  <option value='Järvenpää' >Järvenpää</option>
+  <option value='Kaarina' >Kaarina</option>
+  <option value='Kaavi' >Kaavi</option>
+  <option value='Kajaani' >Kajaani</option>
+  <option value='Kalajoki' >Kalajoki</option>
+  <option value='Kangasala' >Kangasala</option>
+  <option value='Kangasniemi' >Kangasniemi</option>
+  <option value='Kankaanpää' >Kankaanpää</option>
+  <option value='Kannonkoski' >Kannonkoski</option>
+  <option value='Kannus' >Kannus</option>
+  <option value='Karijoki' >Karijoki</option>
+  <option value='Karkkila' >Karkkila</option>
+  <option value='Karstula' >Karstula</option>
+  <option value='Karvia' >Karvia</option>
+  <option value='Kaskinen' >Kaskinen</option>
+  <option value='Kauhajoki' >Kauhajoki</option>
+  <option value='Kauhava' >Kauhava</option>
+  <option value='Kauniainen' >Kauniainen</option>
+  <option value='Kaustinen' >Kaustinen</option>
+  <option value='Keitele' >Keitele</option>
+  <option value='Kemi' >Kemi</option>
+  <option value='Keminmaa' >Keminmaa</option>
+  <option value='Kempele' >Kempele</option>
+  <option value='Kerava' >Kerava</option>
+  <option value='Keuruu' >Keuruu</option>
+  <option value='Kihniö' >Kihniö</option>
+  <option value='Kinnula' >Kinnula</option>
+  <option value='Kirkkonummi' >Kirkkonummi</option>
+  <option value='Kitee' >Kitee</option>
+  <option value='Kittilä' >Kittilä</option>
+  <option value='Kiuruvesi' >Kiuruvesi</option>
+  <option value='Kivijärvi' >Kivijärvi</option>
+  <option value='Kokemäki' >Kokemäki</option>
+  <option value='Kokkola' >Kokkola</option>
+  <option value='Kolari' >Kolari</option>
+  <option value='Konnevesi' >Konnevesi</option>
+  <option value='Kontiolahti' >Kontiolahti</option>
+  <option value='Korsnäs' >Korsnäs</option>
+  <option value='Koski Tl' >Koski Tl</option>
+  <option value='Kotka' >Kotka</option>
+  <option value='Kouvola' >Kouvola</option>
+  <option value='Kristiinankaupunki' >Kristiinankaupunki</option>
+  <option value='Kruunupyy' >Kruunupyy</option>
+  <option value='Kuhmo' >Kuhmo</option>
+  <option value='Kuhmoinen' >Kuhmoinen</option>
+  <option value='Kuopio' >Kuopio</option>
+  <option value='Kuortane' >Kuortane</option>
+  <option value='Kurikka' >Kurikka</option>
+  <option value='Kustavi' >Kustavi</option>
+  <option value='Kuusamo' >Kuusamo</option>
+  <option value='Outokumpu' >Outokumpu</option>
+  <option value='Kyyjärvi' >Kyyjärvi</option>
+  <option value='Kärkölä' >Kärkölä</option>
+  <option value='Kärsämäki' >Kärsämäki</option>
+  <option value='Kemijärvi' >Kemijärvi</option>
+  <option value='Kemiönsaari' >Kemiönsaari</option>
+  <option value='Lahti' >Lahti</option>
+  <option value='Laihia' >Laihia</option>
+  <option value='Laitila' >Laitila</option>
+  <option value='Lapinlahti' >Lapinlahti</option>
+  <option value='Lappajärvi' >Lappajärvi</option>
+  <option value='Lappeenranta' >Lappeenranta</option>
+  <option value='Lapinjärvi' >Lapinjärvi</option>
+  <option value='Lapua' >Lapua</option>
+  <option value='Laukaa' >Laukaa</option>
+  <option value='Lemi' >Lemi</option>
+  <option value='Lempäälä' >Lempäälä</option>
+  <option value='Leppävirta' >Leppävirta</option>
+  <option value='Lestijärvi' >Lestijärvi</option>
+  <option value='Lieksa' >Lieksa</option>
+  <option value='Lieto' >Lieto</option>
+  <option value='Liminka' >Liminka</option>
+  <option value='Liperi' >Liperi</option>
+  <option value='Loimaa' >Loimaa</option>
+  <option value='Loppi' >Loppi</option>
+  <option value='Loviisa' >Loviisa</option>
+  <option value='Luhanka' >Luhanka</option>
+  <option value='Lumijoki' >Lumijoki</option>
+  <option value='Luoto' >Luoto</option>
+  <option value='Luumäki' >Luumäki</option>
+  <option value='Lohja' >Lohja</option>
+  <option value='Parainen' >Parainen</option>
+  <option value='Maalahti' >Maalahti</option>
+  <option value='Marttila' >Marttila</option>
+  <option value='Masku' >Masku</option>
+  <option value='Merijärvi' >Merijärvi</option>
+  <option value='Merikarvia' >Merikarvia</option>
+  <option value='Miehikkälä' >Miehikkälä</option>
+  <option value='Mikkeli' >Mikkeli</option>
+  <option value='Muhos' >Muhos</option>
+  <option value='Multia' >Multia</option>
+  <option value='Muonio' >Muonio</option>
+  <option value='Mustasaari' >Mustasaari</option>
+  <option value='Muurame' >Muurame</option>
+  <option value='Mynämäki' >Mynämäki</option>
+  <option value='Myrskylä' >Myrskylä</option>
+  <option value='Mäntsälä' >Mäntsälä</option>
+  <option value='Mäntyharju' >Mäntyharju</option>
+  <option value='Mänttä-Vilppula' >Mänttä-Vilppula</option>
+  <option value='Naantali' >Naantali</option>
+  <option value='Nakkila' >Nakkila</option>
+  <option value='Nivala' >Nivala</option>
+  <option value='Nokia' >Nokia</option>
+  <option value='Nousiainen' >Nousiainen</option>
+  <option value='Nurmes' >Nurmes</option>
+  <option value='Nurmijärvi' >Nurmijärvi</option>
+  <option value='Närpiö' >Närpiö</option>
+  <option value='Orimattila' >Orimattila</option>
+  <option value='Oripää' >Oripää</option>
+  <option value='Orivesi' >Orivesi</option>
+  <option value='Oulainen' >Oulainen</option>
+  <option value='Oulu' >Oulu</option>
+  <option value='Padasjoki' >Padasjoki</option>
+  <option value='Paimio' >Paimio</option>
+  <option value='Paltamo' >Paltamo</option>
+  <option value='Parikkala' >Parikkala</option>
+  <option value='Parkano' >Parkano</option>
+  <option value='Pelkosenniemi' >Pelkosenniemi</option>
+  <option value='Perho' >Perho</option>
+  <option value='Pertunmaa' >Pertunmaa</option>
+  <option value='Petäjävesi' >Petäjävesi</option>
+  <option value='Pieksämäki' >Pieksämäki</option>
+  <option value='Pielavesi' >Pielavesi</option>
+  <option value='Pietarsaari' >Pietarsaari</option>
+  <option value='Pedersören kunta' >Pedersören kunta</option>
+  <option value='Pihtipudas' >Pihtipudas</option>
+  <option value='Pirkkala' >Pirkkala</option>
+  <option value='Polvijärvi' >Polvijärvi</option>
+  <option value='Pomarkku' >Pomarkku</option>
+  <option value='Pori' >Pori</option>
+  <option value='Pornainen' >Pornainen</option>
+  <option value='Posio' >Posio</option>
+  <option value='Pudasjärvi' >Pudasjärvi</option>
+  <option value='Pukkila' >Pukkila</option>
+  <option value='Punkalaidun' >Punkalaidun</option>
+  <option value='Puolanka' >Puolanka</option>
+  <option value='Puumala' >Puumala</option>
+  <option value='Pyhtää' >Pyhtää</option>
+  <option value='Pyhäjoki' >Pyhäjoki</option>
+  <option value='Pyhäjärvi' >Pyhäjärvi</option>
+  <option value='Pyhäntä' >Pyhäntä</option>
+  <option value='Pyhäranta' >Pyhäranta</option>
+  <option value='Pälkäne' >Pälkäne</option>
+  <option value='Pöytyä' >Pöytyä</option>
+  <option value='Porvoo' >Porvoo</option>
+  <option value='Raahe' >Raahe</option>
+  <option value='Raisio' >Raisio</option>
+  <option value='Rantasalmi' >Rantasalmi</option>
+  <option value='Ranua' >Ranua</option>
+  <option value='Rauma' >Rauma</option>
+  <option value='Rautalampi' >Rautalampi</option>
+  <option value='Rautavaara' >Rautavaara</option>
+  <option value='Rautjärvi' >Rautjärvi</option>
+  <option value='Reisjärvi' >Reisjärvi</option>
+  <option value='Riihimäki' >Riihimäki</option>
+  <option value='Ristijärvi' >Ristijärvi</option>
+  <option value='Rovaniemi' >Rovaniemi</option>
+  <option value='Ruokolahti' >Ruokolahti</option>
+  <option value='Ruovesi' >Ruovesi</option>
+  <option value='Rusko' >Rusko</option>
+  <option value='Rääkkylä' >Rääkkylä</option>
+  <option value='Raasepori' >Raasepori</option>
+  <option value='Saarijärvi' >Saarijärvi</option>
+  <option value='Salla' >Salla</option>
+  <option value='Salo' >Salo</option>
+  <option value='Sauvo' >Sauvo</option>
+  <option value='Savitaipale' >Savitaipale</option>
+  <option value='Savonlinna' >Savonlinna</option>
+  <option value='Savukoski' >Savukoski</option>
+  <option value='Seinäjoki' >Seinäjoki</option>
+  <option value='Sievi' >Sievi</option>
+  <option value='Siikainen' >Siikainen</option>
+  <option value='Siikajoki' >Siikajoki</option>
+  <option value='Siilinjärvi' >Siilinjärvi</option>
+  <option value='Simo' >Simo</option>
+  <option value='Sipoo' >Sipoo</option>
+  <option value='Siuntio' >Siuntio</option>
+  <option value='Sodankylä' >Sodankylä</option>
+  <option value='Soini' >Soini</option>
+  <option value='Somero' >Somero</option>
+  <option value='Sonkajärvi' >Sonkajärvi</option>
+  <option value='Sotkamo' >Sotkamo</option>
+  <option value='Sulkava' >Sulkava</option>
+  <option value='Suomussalmi' >Suomussalmi</option>
+  <option value='Suonenjoki' >Suonenjoki</option>
+  <option value='Sysmä' >Sysmä</option>
+  <option value='Säkylä' >Säkylä</option>
+  <option value='Vaala' >Vaala</option>
+  <option value='Sastamala' >Sastamala</option>
+  <option value='Siikalatva' >Siikalatva</option>
+  <option value='Taipalsaari' >Taipalsaari</option>
+  <option value='Taivalkoski' >Taivalkoski</option>
+  <option value='Taivassalo' >Taivassalo</option>
+  <option value='Tammela' >Tammela</option>
+  <option value='Tampere' >Tampere</option>
+  <option value='Tervo' >Tervo</option>
+  <option value='Tervola' >Tervola</option>
+  <option value='Teuva' >Teuva</option>
+  <option value='Tohmajärvi' >Tohmajärvi</option>
+  <option value='Toholampi' >Toholampi</option>
+  <option value='Toivakka' >Toivakka</option>
+  <option value='Tornio' >Tornio</option>
+  <option value='Turku' >Turku</option>
+  <option value='Pello' >Pello</option>
+  <option value='Tuusniemi' >Tuusniemi</option>
+  <option value='Tuusula' >Tuusula</option>
+  <option value='Tyrnävä' >Tyrnävä</option>
+  <option value='Ulvila' >Ulvila</option>
+  <option value='Urjala' >Urjala</option>
+  <option value='Utajärvi' >Utajärvi</option>
+  <option value='Utsjoki' >Utsjoki</option>
+  <option value='Uurainen' >Uurainen</option>
+  <option value='Uusikaarlepyy' >Uusikaarlepyy</option>
+  <option value='Uusikaupunki' >Uusikaupunki</option>
+  <option value='Vaasa' >Vaasa</option>
+  <option value='Valkeakoski' >Valkeakoski</option>
+  <option value='Valtimo' >Valtimo</option>
+  <option value='Varkaus' >Varkaus</option>
+  <option value='Vehmaa' >Vehmaa</option>
+  <option value='Vesanto' >Vesanto</option>
+  <option value='Vesilahti' >Vesilahti</option>
+  <option value='Veteli' >Veteli</option>
+  <option value='Vieremä' >Vieremä</option>
+  <option value='Vihti' >Vihti</option>
+  <option value='Viitasaari' >Viitasaari</option>
+  <option value='Vimpeli' >Vimpeli</option>
+  <option value='Virolahti' >Virolahti</option>
+  <option value='Virrat' >Virrat</option>
+  <option value='Vöyri' >Vöyri</option>
+  <option value='Ylitornio' >Ylitornio</option>
+  <option value='Ylivieska' >Ylivieska</option>
+  <option value='Ylöjärvi' >Ylöjärvi</option>
+  <option value='Ypäjä' >Ypäjä</option>
+  <option value='Ähtäri' >Ähtäri</option>
+  <option value='Äänekoski' >Äänekoski</option>
+</select>
+  <p id="idea">Alkuperäinen idea: <a href="http://tulpinteractive.com/close-votes/">Jan Willem Tulp, 2012</a></p>
+</body>
